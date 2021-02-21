@@ -1,0 +1,6 @@
+glfw
+pyopengl
+pyrr
+pillow
+numpy
+pywavefront
