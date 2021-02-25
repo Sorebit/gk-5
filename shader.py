@@ -1,6 +1,6 @@
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileShader, compileProgram, ShaderProgram
-from pyrr import matrix44 as m44
+from pyrr import matrix44 as m44, Vector3 as v3
 
 
 class Shader:
@@ -15,6 +15,7 @@ class Shader:
         self._fs_path = fs
         self._shader = self._compile_shader()
 
+        # Assumption: all shaders will have these uniforms.
         self._model_loc = glGetUniformLocation(self._shader, "model")
         self._projection_loc = glGetUniformLocation(self._shader, "projection")
         self._view_loc = glGetUniformLocation(self._shader, "view")
@@ -35,6 +36,10 @@ class Shader:
 
     def set_switcher(self, val: int) -> None:
         glUniform1i(self._switcher_loc, val)
+
+    def set_v3(self, uniform_name: str, val: v3):
+        loc = glGetUniformLocation(self._shader, uniform_name)
+        glUniform3fv(loc, 1, val)
 
     def _compile_shader(self) -> ShaderProgram:
         """

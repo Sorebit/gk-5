@@ -25,20 +25,24 @@ class Window:
         # Set window as current context
         glfw.make_context_current(self._window)
 
-        # Compile shaders
-        self.current_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
-
-        # Use shaders
-        self.current_shader.use()
+        # Set options
         glClearColor(0.6, 0.7, 0.7, 1)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+        # Matrices
         self._fov, self._near, self._far = None, None, None
         self._eye, self._target, self._up = None, None, None
         self.projection_matrix, self.view_matrix = None, None
         self._prepare_matrices()
+
+        # Shaders
+        self.current_shader: Shader = None
+        self.normal_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
+        self.lighting_shader = Shader("shaders/lighting_vs.glsl", "shaders/lighting_fs.glsl")
+        self.light_source_shader = Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl")
+        self.use_shader(self.lighting_shader)
 
         self.scene = [
             LoadedObject("data/floor.obj"),
@@ -47,21 +51,28 @@ class Window:
             LoadedObject("data/monkey.obj", x=0, y=1, z=1),
         ]
 
-        self.light_obj = LoadedObject("data/box/box-N3F_V3F.obj")
-        self.light_color = v3([1.0, 1.0, 1.0])
+        self.light_obj = LoadedObject("data/box/box-V3F.obj", x=1.2, y=1.0, z=2.0)
+        light_color = v3([1.0, 1.0, 1.0])
+        object_color = v3([1.0, 0.5, 0.31])
+        self.current_shader.set_v3("objectColor", object_color)
+        self.current_shader.set_v3("lightColor", light_color)
+
+    def use_shader(self, shader: Shader) -> None:
+        self.current_shader = shader
+        self.current_shader.use()
+        # Update matrices after changing shader
+        self.update_projection()
+        self.update_view()
 
     def _prepare_matrices(self) -> None:
         # Projection matrix
         self._fov = 45
         self._near = 0.1
         self._far = 100
-        self.update_projection()
-
         # View matrix
         self._eye: v3 = v3([math.sin(0) * 5, 3, math.cos(0) * 5])
         self._target: v3 = v3([0, 0.5, 0])
         self._up: v3 = v3([0, 1, 0])
-        self.update_view()
 
     def update_view(self) -> None:
         """Recalculate view matrix and upload it to shader."""
@@ -86,36 +97,37 @@ class Window:
             # Clear buffers
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-            # Update view matrix
-            cam_x = math.sin(glfw.get_time() * 0.5) * 7
-            cam_z = math.cos(glfw.get_time() * 0.5) * 7
-            self._eye = v3([cam_x, 3.0, cam_z])
-            # cam_front = v3([0, 0, -1])
-            # self._target = self._eye + cam_front   # Front facing camera
-
-            # self._target = self.scene[1].pos
-            self.update_view()
-
             # self.current_shader.set_switcher(1)
 
-            upside_down = m44.create_from_x_rotation(math.pi)
             rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
             rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
             trans_y = math.sin(glfw.get_time())
             translation = m44.create_from_translation(v3([0, trans_y, 0]))
             rotation = m44.multiply(rot_x, rot_y)
 
+            upside_down = m44.create_from_x_rotation(math.pi)
             model_1 = m44.multiply(upside_down, self.scene[1].pos)
             model_1 = m44.multiply(translation, model_1)
-            self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
-            self.update_view()
             model_1 = m44.multiply(rot_y, model_1)
-
             self.scene[1].model = model_1
+
             self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
+            # View
+            cam_x = math.sin(glfw.get_time() * 0.5) * 7
+            cam_z = math.cos(glfw.get_time() * 0.5) * 7
+            self._eye = v3([cam_x, 3.0, cam_z])
+            cam_front = v3([0, 0, -1])
+            # self._target = self._eye + cam_front   # Front facing camera
+            self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
+
+            self.use_shader(self.lighting_shader)
             for o in self.scene:
                 o.draw(self.current_shader)
+
+            self.use_shader(self.light_source_shader)
+            self.light_obj.model = m44.multiply(m44.create_from_scale(v3([0.2, .2, .2])), self.light_obj.pos)
+            self.light_obj.draw(self.current_shader)
 
             glfw.swap_buffers(self._window)
 
