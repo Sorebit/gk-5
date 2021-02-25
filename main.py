@@ -43,7 +43,7 @@ class Window:
         self.phong_shader = Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl")
         self.gouraud_shader = Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl")
         self.light_source_shader = Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl")
-        self.use_shader(self.phong_shader)
+        self.use_shader(self.gouraud_shader)
 
         self.scene = [
             LoadedObject("data/floor.obj"),
@@ -134,7 +134,7 @@ class Window:
             # print(self.light_obj.model)
             self.light_obj.draw(self.current_shader)
 
-            self.use_shader(self.phong_shader)
+            self.use_shader(self.gouraud_shader)
             self.current_shader.set_v3("lightPos", v3.from_matrix44_translation(self.light_obj.pos))
             self.current_shader.set_v3("viewPos", self._eye)
             for o in self.scene:
