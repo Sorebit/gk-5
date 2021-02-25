@@ -40,9 +40,10 @@ class Window:
         # Shaders
         self.current_shader: Shader = None
         self.normal_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
-        self.lighting_shader = Shader("shaders/lighting_vs.glsl", "shaders/lighting_fs.glsl")
+        self.phong_shader = Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl")
+        self.gouraud_shader = Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl")
         self.light_source_shader = Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl")
-        self.use_shader(self.lighting_shader)
+        self.use_shader(self.phong_shader)
 
         self.scene = [
             LoadedObject("data/floor.obj"),
@@ -51,11 +52,12 @@ class Window:
             LoadedObject("data/monkey.obj", x=0, y=1, z=1),
         ]
 
-        self.light_obj = LoadedObject("data/box/box-V3F.obj", x=1.2, y=1.0, z=2.0)
+        self.light_obj = LoadedObject("data/box/box-V3F.obj", x=1.2, y=3.0, z=2.0)
         light_color = v3([1.0, 1.0, 1.0])
         object_color = v3([1.0, 0.5, 0.31])
         self.current_shader.set_v3("objectColor", object_color)
         self.current_shader.set_v3("lightColor", light_color)
+        self.current_shader.set_v3("lightPos", self.light_obj.pos)
 
     def use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
@@ -70,8 +72,8 @@ class Window:
         self._near = 0.1
         self._far = 100
         # View matrix
-        self._eye: v3 = v3([math.sin(0) * 5, 3, math.cos(0) * 5])
-        self._target: v3 = v3([0, 0.5, 0])
+        self._eye: v3 = v3([math.sin(0) * 5, 8, math.cos(0) * 10])
+        self._target: v3 = v3([0, 2.0, 0])
         self._up: v3 = v3([0, 1, 0])
 
     def update_view(self) -> None:
@@ -111,23 +113,32 @@ class Window:
             model_1 = m44.multiply(rot_y, model_1)
             self.scene[1].model = model_1
 
+            # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
             self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
             # View
             cam_x = math.sin(glfw.get_time() * 0.5) * 7
             cam_z = math.cos(glfw.get_time() * 0.5) * 7
-            self._eye = v3([cam_x, 3.0, cam_z])
+            # self._eye = v3([cam_x, 3.0, cam_z])
             cam_front = v3([0, 0, -1])
             # self._target = self._eye + cam_front   # Front facing camera
-            self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
+            # self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
 
-            self.use_shader(self.lighting_shader)
-            for o in self.scene:
-                o.draw(self.current_shader)
+
 
             self.use_shader(self.light_source_shader)
-            self.light_obj.model = m44.multiply(m44.create_from_scale(v3([0.2, .2, .2])), self.light_obj.pos)
+            self.light_obj.pos = m44.create_from_translation(v3([cam_x, 4.0, cam_z]))
+            self.light_obj.model = m44.multiply(m44.create_from_scale(v3([0.2, 0.2, 0.2])), self.light_obj.pos)
+
+            # print(self.light_obj.pos)
+            # print(self.light_obj.model)
             self.light_obj.draw(self.current_shader)
+
+            self.use_shader(self.phong_shader)
+            self.current_shader.set_v3("lightPos", v3.from_matrix44_translation(self.light_obj.pos))
+            self.current_shader.set_v3("viewPos", self._eye)
+            for o in self.scene:
+                o.draw(self.current_shader)
 
             glfw.swap_buffers(self._window)
 

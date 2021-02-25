@@ -19,7 +19,7 @@
     - [ ] związana z ruchomym obiektem
 - [ ] mozliwość zmiany trybu cieniowania (wypełniania trójkątów):
     - [ ] cieniowanie Gourauda
-    - [ ] cieniowanie Phonga
+    - [x] cieniowanie Phonga
 - [ ] Kilka źródeł światła (min 3):
     - [ ] min. jeden reflektor na poruszającym się obiekcie (np. światła samochodu)
     - [ ] Musi istnieć możliwość zmiany kierunku świecenia reflektora (względnej) umieszczonego na obiekcie ruchomym
