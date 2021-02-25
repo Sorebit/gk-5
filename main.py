@@ -29,7 +29,7 @@ class Window:
         self.current_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
 
         # Use shaders
-        self.current_shader.use_program()
+        self.current_shader.use()
         glClearColor(0.6, 0.7, 0.7, 1)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

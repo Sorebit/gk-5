@@ -21,7 +21,7 @@ class Shader:
         self._switcher_loc = glGetUniformLocation(self._shader, "switcher")
         # self._light_color_loc = glGetUniformLocation(self._shader, "light_color")
 
-    def use_program(self) -> None:
+    def use(self) -> None:
         glUseProgram(self._shader)
 
     def set_model(self, matrix: m44):
