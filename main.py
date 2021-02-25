@@ -1,6 +1,5 @@
 import glfw
 from OpenGL.GL import *
-
 from pyrr import matrix44 as m44, Vector3 as v3
 import math
 
@@ -36,12 +35,6 @@ class Window:
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        # Get uniform locations
-
-        # Necessary for objects to be loaded properly
-        LoadedObject.shader_model_loc = self.current_shader.get_model_loc()
-        LoadedObject.shader_switcher_loc = self.current_shader.get_switcher_loc()
-
         self._fov, self._near, self._far = None, None, None
         self._eye, self._target, self._up = None, None, None
         self.projection_matrix, self.view_matrix = None, None
@@ -73,17 +66,13 @@ class Window:
     def update_view(self) -> None:
         """Recalculate view matrix and upload it to shader."""
         self.view_matrix = m44.create_look_at(self._eye, self._target, self._up)
-        view_loc = self.current_shader.get_view_loc()
-        glUniformMatrix4fv(view_loc, 1, GL_FALSE, self.view_matrix)
+        self.current_shader.set_view(self.view_matrix)
 
     def update_projection(self) -> None:
         """Recalculate projection matrix and upload it to shader."""
-        # Calculate projection matrix
         a = self._width / self._height
         self.projection_matrix = m44.create_perspective_projection(self._fov, a, self._near, self._far)
-        # Upload projection matrix to shader
-        projection_loc = self.current_shader.get_projection_loc()
-        glUniformMatrix4fv(projection_loc, 1, GL_FALSE, self.projection_matrix)
+        self.current_shader.set_projection(self.projection_matrix)
 
     def on_resize(self, _window, width, height) -> None:
         self._width, self._height = width, height
@@ -107,7 +96,7 @@ class Window:
             # self._target = self.scene[1].pos
             self.update_view()
 
-            glUniform1i(self.current_shader.get_switcher_loc(), 0)
+            # self.current_shader.set_switcher(1)
 
             upside_down = m44.create_from_x_rotation(math.pi)
             rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
@@ -126,7 +115,7 @@ class Window:
             self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
             for o in self.scene:
-                o.draw()
+                o.draw(self.current_shader)
 
             glfw.swap_buffers(self._window)
 

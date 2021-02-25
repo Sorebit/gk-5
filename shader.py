@@ -1,5 +1,6 @@
-from OpenGL.GL import GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, glUseProgram, glGetUniformLocation
+from OpenGL.GL import *
 from OpenGL.GL.shaders import compileShader, compileProgram, ShaderProgram
+from pyrr import matrix44 as m44
 
 
 class Shader:
@@ -23,17 +24,17 @@ class Shader:
     def use_program(self) -> None:
         glUseProgram(self._shader)
 
-    def get_model_loc(self) -> int:
-        return self._model_loc
+    def set_model(self, matrix: m44):
+        glUniformMatrix4fv(self._model_loc, 1, GL_FALSE, matrix)
 
-    def get_projection_loc(self) -> int:
-        return self._projection_loc
+    def set_projection(self, matrix: m44):
+        glUniformMatrix4fv(self._projection_loc, 1, GL_FALSE, matrix)
 
-    def get_view_loc(self) -> int:
-        return self._view_loc
+    def set_view(self, matrix: m44):
+        glUniformMatrix4fv(self._view_loc, 1, GL_FALSE, matrix)
 
-    def get_switcher_loc(self) -> int:
-        return self._switcher_loc
+    def set_switcher(self, val: int) -> None:
+        glUniform1i(self._switcher_loc, val)
 
     def _compile_shader(self) -> ShaderProgram:
         """
