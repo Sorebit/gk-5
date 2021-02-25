@@ -1,6 +1,15 @@
 # Grafika 3D
 
-## Podstawowa specyfikacja dla projektów na CPU:
+## Installation
+
+- Python 3.8
+- `pip install -r requirements.txt`
+
+## Usage
+
+- `python main.py`
+
+## Specyfikacja:
 
 - [ ] Jeden obiekt poruszający się (przesuwanie + obroty)
 - [ ] Kilka stałych obiektów. Jeden z nich gładki (np. interpolowana trójkatami sfera)
@@ -16,8 +25,6 @@
     - [ ] Musi istnieć możliwość zmiany kierunku świecenia reflektora (względnej) umieszczonego na obiekcie ruchomym
     - [ ] Min. jedne stałe (nieporuszające się) żródło światła (punktowe lub reflektor)
 - [ ] mgła - płynna zmiana
-
-OpenGL (dodatkowo):
 - [ ] noc/dzień - płynne zmiany
 - [ ] "zanikanie" światła wraz z odległością
 
@@ -39,4 +46,5 @@ Dodatkowo jeden element do wyboru:
     - kolejka linowa + wiatr
     - wyścigi samochodowe
 
-Projekty nalezy oddawać osobiście. Proszę przygotować uaktualnioną dokumentację (przyjęte rozwiązania techniczne oraz 'user manual') oraz krótki 30-60 sek. film z działania aplikacji.
+- [ ] uaktualniona dokumentacja (przyjęte rozwiązania techniczne oraz 'user manual')
+- [ ] krótki 30-60 sek. film z działania aplikacji.
