@@ -1,121 +1,11 @@
 import glfw
 from OpenGL.GL import *
-import numpy as np
+
 from pyrr import matrix44 as m44, Vector3 as v3
 import math
-import pywavefront
-from PIL import Image
 
-from shader_loader import compile_shader
-
-
-class LoadedObject:
-    shader_model_loc = None
-
-    def __init__(self, path: str, x=0.0, y=0.0, z=0.0):
-        """Object loaded from .obj and .mtl files, ready to be drawn."""
-        self._path = path
-        self._wavefront = None
-        self.vaos = None
-        self._vbos = None
-        self.textures = None
-        self.lengths = []
-        self.pos = m44.create_from_translation(v3([x, y, z]))
-
-        self.model = self.pos
-        # Set uniform location for model matrix.
-        if LoadedObject.shader_model_loc is None:
-            raise Exception("Model loc not set!")
-        self._model_loc = LoadedObject.shader_model_loc
-
-        self._load_obj()
-
-    def _load_obj(self) -> None:
-        """Loads wavefront obj and materials. Stores vertex data into VAOs and VBOs."""
-        self._wavefront = pywavefront.Wavefront(self._path, collect_faces=True, create_materials=True)
-
-        # Generate buffers
-        materials_count = len(self._wavefront.materials)
-        self.vaos = glGenVertexArrays(materials_count)
-        self._vbos = glGenBuffers(materials_count)
-        self.textures = glGenTextures(materials_count)
-
-        if materials_count == 1:
-            # glGen* will return an int instead of an np.array if argument is 1.
-            self.vaos = np.array([self.vaos], dtype=np.uint32)
-            self._vbos = np.array([self._vbos], dtype=np.uint32)
-            self.textures = np.array([self.textures], dtype=np.uint32)
-
-        # For each material fill buffers and load a texture
-        ind = 0
-        for key, material in self._wavefront.materials.items():
-            print(f'M: {key} : {material.vertex_format}, vs: {material.vertex_size}')
-            vertex_size = material.vertex_size
-            scene_vertices = np.array(material.vertices, dtype=np.float32)
-            # Store length for drawing
-            self.lengths.append(len(scene_vertices))
-            # Load texture by path (may break in some weird cases, I guess)
-            self._load_texture(material.texture.path, self.textures[ind])
-
-            # Bind VAO
-            glBindVertexArray(self.vaos[ind])
-            # Fill VBO
-            glBindBuffer(GL_ARRAY_BUFFER, self._vbos[ind])
-            glBufferData(GL_ARRAY_BUFFER, scene_vertices.nbytes, scene_vertices, GL_STATIC_DRAW)
-
-            # Set attribute buffers
-            attr_format = {
-                "T2F": (1, 2),  # Tex coords (2 floats): ind=1
-                "C3F": (2, 3),  # Color (3 floats): ind=2
-                "N3F": (3, 3),  # Normal (3 floats): ind=3
-                "V3F": (0, 3),  # Position (3 floats): ind=0
-            }
-
-            cur_off = 0  # current start offset
-            for attr in material.vertex_format.split("_"):
-                if attr not in attr_format:
-                    raise Exception("Unknown format")
-
-                # Apply
-                attr_ind, attr_size = attr_format[attr]
-                glEnableVertexAttribArray(attr_ind)
-                glVertexAttribPointer(attr_ind, attr_size, GL_FLOAT, GL_FALSE, scene_vertices.itemsize * vertex_size,
-                                      ctypes.c_void_p(cur_off))
-                cur_off += attr_size * 4
-
-            # Unbind (Technically not necessary but used as a precaution)
-            glBindVertexArray(0)
-            ind += 1
-
-    def _load_texture(self, path: str, texture: int) -> None:
-        """
-        Loads texture into buffer by given path and tex buffer ID.
-
-        :param path: Texture path.
-        :param texture: Texture buffer ID.
-        """
-        # For use with GLFW
-        glBindTexture(GL_TEXTURE_2D, texture)
-        # Set the texture wrapping parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-        # Set texture filtering parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        # Load image
-        image = Image.open(path)
-        image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        img_data = image.convert("RGBA").tobytes()
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-
-    def draw(self) -> None:
-        """Draws loaded object onto GL buffer."""
-        for vao, tex, length in zip(self.vaos, self.textures, self.lengths):
-            # glUniform1i(self.switcher_loc, 1)
-            glBindVertexArray(vao)
-            glBindTexture(GL_TEXTURE_2D, tex)
-            glUniformMatrix4fv(self._model_loc, 1, GL_FALSE, self.model)
-            glDrawArrays(GL_TRIANGLES, 0, length)
+from shader import Shader
+from loaded_object import LoadedObject
 
 
 class Window:
@@ -137,22 +27,20 @@ class Window:
         glfw.make_context_current(self._window)
 
         # Compile shaders
-        shader = compile_shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
+        self.current_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
 
         # Use shaders
-        glUseProgram(shader)
+        self.current_shader.use_program()
         glClearColor(0.6, 0.7, 0.7, 1)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         # Get uniform locations
-        self.model_loc = glGetUniformLocation(shader, "model")
-        self.projection_loc = glGetUniformLocation(shader, "projection")
-        self.view_loc = glGetUniformLocation(shader, "view")
-        self.switcher_loc = glGetUniformLocation(shader, "switcher")
+
         # Necessary for objects to be loaded properly
-        LoadedObject.shader_model_loc = self.model_loc
+        LoadedObject.shader_model_loc = self.current_shader.get_model_loc()
+        LoadedObject.shader_switcher_loc = self.current_shader.get_switcher_loc()
 
         self._fov, self._near, self._far = None, None, None
         self._eye, self._target, self._up = None, None, None
@@ -166,6 +54,9 @@ class Window:
             LoadedObject("data/monkey.obj", x=0, y=1, z=1),
         ]
 
+        self.light_obj = LoadedObject("data/box/box-N3F_V3F.obj")
+        self.light_color = v3([1.0, 1.0, 1.0])
+
     def _prepare_matrices(self) -> None:
         # Projection matrix
         self._fov = 45
@@ -174,15 +65,16 @@ class Window:
         self.update_projection()
 
         # View matrix
-        self._eye = v3([math.sin(0) * 5, 3, math.cos(0) * 5])
-        self._target = v3([0, 0.5, 0])
-        self._up = v3([0, 1, 0])
+        self._eye: v3 = v3([math.sin(0) * 5, 3, math.cos(0) * 5])
+        self._target: v3 = v3([0, 0.5, 0])
+        self._up: v3 = v3([0, 1, 0])
         self.update_view()
 
     def update_view(self) -> None:
         """Recalculate view matrix and upload it to shader."""
         self.view_matrix = m44.create_look_at(self._eye, self._target, self._up)
-        glUniformMatrix4fv(self.view_loc, 1, GL_FALSE, self.view_matrix)
+        view_loc = self.current_shader.get_view_loc()
+        glUniformMatrix4fv(view_loc, 1, GL_FALSE, self.view_matrix)
 
     def update_projection(self) -> None:
         """Recalculate projection matrix and upload it to shader."""
@@ -190,7 +82,8 @@ class Window:
         a = self._width / self._height
         self.projection_matrix = m44.create_perspective_projection(self._fov, a, self._near, self._far)
         # Upload projection matrix to shader
-        glUniformMatrix4fv(self.projection_loc, 1, GL_FALSE, self.projection_matrix)
+        projection_loc = self.current_shader.get_projection_loc()
+        glUniformMatrix4fv(projection_loc, 1, GL_FALSE, self.projection_matrix)
 
     def on_resize(self, _window, width, height) -> None:
         self._width, self._height = width, height
@@ -208,15 +101,29 @@ class Window:
             cam_x = math.sin(glfw.get_time() * 0.5) * 7
             cam_z = math.cos(glfw.get_time() * 0.5) * 7
             self._eye = v3([cam_x, 3.0, cam_z])
+            # cam_front = v3([0, 0, -1])
+            # self._target = self._eye + cam_front   # Front facing camera
+
+            # self._target = self.scene[1].pos
             self.update_view()
 
-            glUniform1i(self.switcher_loc, 0)
+            glUniform1i(self.current_shader.get_switcher_loc(), 0)
 
+            upside_down = m44.create_from_x_rotation(math.pi)
             rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
             rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
+            trans_y = math.sin(glfw.get_time())
+            translation = m44.create_from_translation(v3([0, trans_y, 0]))
             rotation = m44.multiply(rot_x, rot_y)
 
-            self.scene[1].model = m44.multiply(rotation, self.scene[1].pos)
+            model_1 = m44.multiply(upside_down, self.scene[1].pos)
+            model_1 = m44.multiply(translation, model_1)
+            self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
+            self.update_view()
+            model_1 = m44.multiply(rot_y, model_1)
+
+            self.scene[1].model = model_1
+            self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
             for o in self.scene:
                 o.draw()

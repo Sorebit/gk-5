@@ -11,10 +11,12 @@ uniform mat4 model;
 
 out vec3 v_color;
 out vec2 v_texture;
+out vec3 v_normal;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(a_position, 1.0f);
+    v_normal = a_normal;
     v_texture = a_texture;
     v_color = a_color;
+    gl_Position = projection * view * model * vec4(a_position, 1.0f);
 }
