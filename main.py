@@ -98,7 +98,7 @@ class Window:
         glViewport(0, 0, self._width, self._height)
         self.update_projection()
 
-    def on_key_input(self, window, key, scancode, action, mode):
+    def on_key_input(self, _window, key, _scancode, action, _mode):
         if action != glfw.PRESS:
             return
         if key == glfw.KEY_1:
@@ -176,8 +176,8 @@ class Window:
 def main():
     window = Window(1280, 720, "GK Final")
     window.main_loop()
+    glfw.terminate()
 
 
 if __name__ == '__main__':
     main()
-    glfw.terminate()
