@@ -34,6 +34,13 @@ class Window:
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+        # Camera
+        self.sel_camera: str = "static"  # Selected camera name
+        self.update_camera: bool = True
+        self._static_target: v3 = v3([0, 2.0, 0])
+        self._default_eye: v3 = v3([math.sin(0) * 5, 8, math.cos(0) * 10])
+        self._camera_front = v3([0, 0, -1])
+
         # Matrices
         self._fov, self._near, self._far = None, None, None
         self._eye, self._target, self._up = None, None, None
@@ -78,8 +85,8 @@ class Window:
         self._near = 0.1
         self._far = 100
         # View matrix
-        self._eye: v3 = v3([math.sin(0) * 5, 8, math.cos(0) * 10])
-        self._target: v3 = v3([0, 2.0, 0])
+        self._eye: v3 = self._default_eye
+        self._target: v3 = self._static_target
         self._up: v3 = v3([0, 1, 0])
 
     def update_view(self) -> None:
@@ -101,12 +108,10 @@ class Window:
     def on_key_input(self, _window, key, _scancode, action, _mode):
         if action != glfw.PRESS:
             return
-        if key == glfw.KEY_1:
-            print(f"{glfw.get_time()} key 1")
-        elif key == glfw.KEY_2:
-            print(f"{glfw.get_time()} key 2")
-        elif key == glfw.KEY_3:
-            print(f"{glfw.get_time()} key 3")
+        cam = {glfw.KEY_1: "static", glfw.KEY_2: "following", glfw.KEY_3: "moving"}
+        if key in cam:
+            self.sel_camera = cam[key]
+            self.update_camera = True
         elif key == glfw.KEY_O:
             self.sel_shader_key = "gouraud"
         elif key == glfw.KEY_P:
@@ -115,20 +120,10 @@ class Window:
     def main_loop(self) -> None:
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
-
-            # Clear buffers
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-            # Advance objects in their movements
             self.move_objects()
-
-            # Camera
-            cam_x = math.sin(glfw.get_time() * 0.5) * 7
-            cam_z = math.cos(glfw.get_time() * 0.5) * 7
-            # self._eye = v3([-cam_x, 3.0, cam_z])
-            # cam_front = v3([0, 0, -1])
-            # self._target = self._eye + cam_front   # Front facing camera
-            # self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
+            self.process_camera()
 
             # Light
             # light_color = v3([
@@ -139,7 +134,9 @@ class Window:
             # self.light.diffuse = light_color * v3([0.5] * 3)
             # self.light.ambient = self.light.diffuse * v3([0.2] * 3)
 
-            self.light.set_pos(v3([cam_x, 4.0, cam_z]))
+            light_x = math.sin(glfw.get_time() * 0.5) * 7
+            light_z = math.cos(glfw.get_time() * 0.5) * 7
+            self.light.set_pos(v3([light_x, 4.0, light_z]))
             self.use_shader(self.shaders["light_source"])
             self.light.draw()
 
@@ -171,6 +168,24 @@ class Window:
 
         # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
         self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
+
+    def process_camera(self):
+        if not self.update_camera:
+            return
+
+        if self.sel_camera == "static":
+            self._eye = self._default_eye
+            self._target = self._static_target
+            self.update_camera = False  # Static camera needs to be calculated only once.
+        elif self.sel_camera == "following":
+            self._eye = self._default_eye
+            self._target = v3.from_matrix44_translation(self.scene[1].model)
+        elif self.sel_camera == "moving":
+            cam_x = math.sin(glfw.get_time() * 0.5) * 7
+            cam_z = math.cos(glfw.get_time() * 0.5) * 7
+            self._eye = v3([-cam_x, 3.0, cam_z])
+            self._target = self._eye + self._camera_front  # Front facing camera
+        self.update_view()
 
 
 def main():

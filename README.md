@@ -13,9 +13,9 @@
 
 - [ ] Jeden obiekt poruszający się (przesuwanie + obroty)
 - [ ] Kilka stałych obiektów. Jeden z nich gładki (np. interpolowana trójkatami sfera)
-- [ ] min 3 kamery (przełączanie):
-    - [ ] nieruchoma obserwująca scenę
-    - [ ] nieruchoma śledząca ruchomy obiekt
+- [x] min 3 kamery (przełączanie):
+    - [x] nieruchoma obserwująca scenę
+    - [x] nieruchoma śledząca ruchomy obiekt
     - [ ] związana z ruchomym obiektem
 - [x] mozliwość zmiany trybu cieniowania (wypełniania trójkątów):
     - [ ] cieniowanie Gourauda
@@ -53,9 +53,9 @@ Dodatkowo jeden element do wyboru:
 
 ### Kamera
 
-- `1` - Kamera 1
-- `2` - Kamera 2
-- `3` - Kamera 3
+- `1` - Kamera statyczna
+- `2` - Kamera podążająca za obiektem
+- `3` - Kamera "przyczepiona" do obiektu
   
 ### Cieniowanie
 
