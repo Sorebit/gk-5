@@ -23,6 +23,8 @@ class Window:
 
         # Set resize handler
         glfw.set_window_size_callback(self._window, self.on_resize)
+        # Set keyboard input handler
+        glfw.set_key_callback(self._window, self.on_key_input)
         # Set window as current context
         glfw.make_context_current(self._window)
 
@@ -45,7 +47,8 @@ class Window:
             "light_source": Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl"),
         }
         self.current_shader: Shader = None
-        self.use_shader(self.shaders["gouraud"])
+        self.sel_shader_key: str = "phong"  # Shaders dict key for selected shader
+        self.use_shader(self.shaders[self.sel_shader_key])
 
         self.scene = [
             LoadedObject("data/floor.obj"),
@@ -95,8 +98,21 @@ class Window:
         glViewport(0, 0, self._width, self._height)
         self.update_projection()
 
+    def on_key_input(self, window, key, scancode, action, mode):
+        if action != glfw.PRESS:
+            return
+        if key == glfw.KEY_1:
+            print(f"{glfw.get_time()} key 1")
+        elif key == glfw.KEY_2:
+            print(f"{glfw.get_time()} key 2")
+        elif key == glfw.KEY_3:
+            print(f"{glfw.get_time()} key 3")
+        elif key == glfw.KEY_O:
+            self.sel_shader_key = "gouraud"
+        elif key == glfw.KEY_P:
+            self.sel_shader_key = "phong"
+
     def main_loop(self) -> None:
-        # cnt = 0
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
 
@@ -127,21 +143,13 @@ class Window:
             self.use_shader(self.shaders["light_source"])
             self.light.draw()
 
-            # TODO: Handle changing shaders by keyboard shortcuts
-            # Choose lighting shader
-            # if cnt < 1000:
-            #     self.use_shader(self.gouraud_shader)
-            # else:
-            self.use_shader(self.shaders["phong"])
-            #   if cnt == 2000:
-            #         cnt = 0
-            # cnt += 1
-
+            # Draw shaded objects
+            self.use_shader(self.shaders[self.sel_shader_key])
             # TODO: Consider changing back to uploading viewPos or change Gouraud to process things in view space
             self.current_shader.set_v3("viewPos", self._eye)
 
             self.light.use_light(self.current_shader)
-            # Draw shaded objects
+
             for o in self.scene:
                 o.draw(self.current_shader)
 

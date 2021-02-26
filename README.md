@@ -17,8 +17,8 @@
     - [ ] nieruchoma obserwująca scenę
     - [ ] nieruchoma śledząca ruchomy obiekt
     - [ ] związana z ruchomym obiektem
-- [ ] mozliwość zmiany trybu cieniowania (wypełniania trójkątów):
-    - [x] cieniowanie Gourauda
+- [x] mozliwość zmiany trybu cieniowania (wypełniania trójkątów):
+    - [ ] cieniowanie Gourauda
     - [x] cieniowanie Phonga
 - [ ] Kilka źródeł światła (min 3):
     - [ ] min. jeden reflektor na poruszającym się obiekcie (np. światła samochodu)
@@ -48,3 +48,16 @@ Dodatkowo jeden element do wyboru:
 
 - [ ] uaktualniona dokumentacja (przyjęte rozwiązania techniczne oraz 'user manual')
 - [ ] krótki 30-60 sek. film z działania aplikacji.
+
+## Klawiszologia
+
+### Kamera
+
+- `1` - Kamera 1
+- `2` - Kamera 2
+- `3` - Kamera 3
+  
+### Cieniowanie
+
+- `O` - Gouraud
+- `P` - Phong
