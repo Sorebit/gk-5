@@ -18,7 +18,7 @@
     - [ ] nieruchoma śledząca ruchomy obiekt
     - [ ] związana z ruchomym obiektem
 - [ ] mozliwość zmiany trybu cieniowania (wypełniania trójkątów):
-    - [ ] cieniowanie Gourauda
+    - [x] cieniowanie Gourauda
     - [x] cieniowanie Phonga
 - [ ] Kilka źródeł światła (min 3):
     - [ ] min. jeden reflektor na poruszającym się obiekcie (np. światła samochodu)

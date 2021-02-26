@@ -14,6 +14,7 @@ class LoadedObject:
         self._wavefront = None
         self.vaos = None
         self._vbos = None
+        self.materials = []
         self.textures = None
         self.use_texture = False
         self.lengths = []
@@ -45,8 +46,9 @@ class LoadedObject:
             print(f'M: {key} : {material.vertex_format}, vs: {material.vertex_size}')
             vertex_size = material.vertex_size
             scene_vertices = np.array(material.vertices, dtype=np.float32)
-            # Store length for drawing
+            # Store length and materials for drawing
             self.lengths.append(len(scene_vertices))
+            self.materials.append(material)
             # Load texture by path (may break in some weird cases, I guess)
             if material.texture is not None:
                 self._load_texture(material.texture.path, self.textures[ind])
@@ -107,8 +109,16 @@ class LoadedObject:
     def draw(self, shader: Shader) -> None:
         """Draws loaded object onto GL buffer with selected shader."""
         # shader.use_program()  # Not really sure if that's how you should do it
-        for vao, tex, length in zip(self.vaos, self.textures, self.lengths):
+        for vao, tex, length, mat in zip(self.vaos, self.textures, self.lengths, self.materials):
             glBindVertexArray(vao)
             glBindTexture(GL_TEXTURE_2D, tex)
             shader.set_model(self.model)
+            shader.set_v3("material.ambient", mat.ambient)
+            shader.set_v3("material.diffuse", mat.diffuse)
+            shader.set_v3("material.specular", mat.specular)
+            shader.set_float("material.shininess", mat.shininess)
+            # shader.set_v3("material.ambient", v3([1.0, 0.5, 0.31]))
+            # shader.set_v3("material.diffuse", v3([1.0, 0.5, 0.31]))
+            # shader.set_v3("material.specular", v3([0.5, 0.5, 0.5])) # specular lighting doesn't have full effect on this object's material
+            # shader.set_float("material.shininess", 32.0)
             glDrawArrays(GL_TRIANGLES, 0, length)

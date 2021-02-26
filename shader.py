@@ -37,6 +37,10 @@ class Shader:
     def set_switcher(self, val: int) -> None:
         glUniform1i(self._switcher_loc, val)
 
+    def set_float(self, uniform_name: str, val: float) -> None:
+        loc = glGetUniformLocation(self._shader, uniform_name)
+        glUniform1f(loc, val)
+
     def set_v3(self, uniform_name: str, val: v3):
         loc = glGetUniformLocation(self._shader, uniform_name)
         glUniform3fv(loc, 1, val)

@@ -7,6 +7,24 @@ from shader import Shader
 from loaded_object import LoadedObject
 
 
+class Light:
+    def __init__(self, amb: v3, dif: v3, spe: v3, pos: v3):
+        self.ambient: v3 = amb
+        self.diffusion: v3 = dif
+        self.specular: v3 = spe
+        self._pos: v3 = pos
+        self._model: m44 = m44.create_from_translation(self._pos)
+
+    def set_pos(self, pos: v3):
+        self._pos = pos
+        self._model = m44.create_from_translation(self._pos)
+
+    def use_light(self, shader: Shader) -> None:
+        shader.set_v3("light.ambient", self.ambient)
+        shader.set_v3("light.diffuse", self.diffusion)
+        shader.set_v3("light.specular", self.specular)
+        shader.set_v3("lightPos", self._pos)
+
 class Window:
     def __init__(self, width: int, height: int, title: str):
         # Initialize window
@@ -53,11 +71,11 @@ class Window:
         ]
 
         self.light_obj = LoadedObject("data/box/box-V3F.obj", x=1.2, y=3.0, z=2.0)
-        light_color = v3([1.0, 1.0, 1.0])
-        object_color = v3([1.0, 0.5, 0.31])
-        self.current_shader.set_v3("objectColor", object_color)
-        self.current_shader.set_v3("lightColor", light_color)
-        self.current_shader.set_v3("lightPos", self.light_obj.pos)
+        self.light = Light(amb=v3([0.3, 0.3, 0.3]),
+                           dif=v3([1.0, 1.0, 1.0]),
+                           spe=v3([1.0, 1.0, 1.0]),
+                           pos=v3([1.2, 3.0, 2.0]))
+
 
     def use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
@@ -93,6 +111,7 @@ class Window:
         self.update_projection()
 
     def main_loop(self) -> None:
+        cnt = 0
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
 
@@ -119,27 +138,54 @@ class Window:
             # View
             cam_x = math.sin(glfw.get_time() * 0.5) * 7
             cam_z = math.cos(glfw.get_time() * 0.5) * 7
-            # self._eye = v3([cam_x, 3.0, cam_z])
+            # self._eye = v3([-cam_x, 3.0, cam_z])
             cam_front = v3([0, 0, -1])
             # self._target = self._eye + cam_front   # Front facing camera
             # self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
 
-
-
             self.use_shader(self.light_source_shader)
             self.light_obj.pos = m44.create_from_translation(v3([cam_x, 4.0, cam_z]))
             self.light_obj.model = m44.multiply(m44.create_from_scale(v3([0.2, 0.2, 0.2])), self.light_obj.pos)
+            self.light.set_pos(v3([cam_x, 4.0, cam_z]))
 
             # print(self.light_obj.pos)
             # print(self.light_obj.model)
             self.light_obj.draw(self.current_shader)
 
-            self.use_shader(self.gouraud_shader)
-            self.current_shader.set_v3("lightPos", v3.from_matrix44_translation(self.light_obj.pos))
+            # Lighting shader
+            # if cnt < 1000:
+            #     self.use_shader(self.gouraud_shader)
+            # else:
+            self.use_shader(self.phong_shader)
+                # if cnt == 2000:
+                #     cnt = 0
+            # cnt += 1
+
             self.current_shader.set_v3("viewPos", self._eye)
+
+            # light_color = v3([
+            #     math.sin(glfw.get_time() * 2.0),
+            #     math.sin(glfw.get_time() * 0.7),
+            #     math.sin(glfw.get_time() * 1.3)
+            # ])
+            #
+            # diffuse_color = light_color * v3([0.5]*3)
+            # ambient_color = diffuse_color * v3([0.2]*3)
+            #
+            # self.current_shader.set_v3("light.ambient", ambient_color)
+            # self.current_shader.set_v3("light.diffuse", diffuse_color)
+
+            # self.current_shader.set_v3("lightPos", v3.from_matrix44_translation(self.light_obj.pos))
+            #
+            # self.current_shader.set_v3("light.ambient", v3([0.3, 0.3, 0.3]))
+            # self.current_shader.set_v3("light.diffuse", v3([1.0, 1.0, 1.0]))
+            # self.current_shader.set_v3("light.specular", v3([1.0, 1.0, 1.0]))
+            self.light.use_light(self.current_shader)
+            # Draw shaded objects
             for o in self.scene:
                 o.draw(self.current_shader)
 
+            # Swap buffers
             glfw.swap_buffers(self._window)
 
 
