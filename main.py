@@ -5,25 +5,8 @@ import math
 
 from shader import Shader
 from loaded_object import LoadedObject
+from light import Light
 
-
-class Light:
-    def __init__(self, amb: v3, dif: v3, spe: v3, pos: v3):
-        self.ambient: v3 = amb
-        self.diffusion: v3 = dif
-        self.specular: v3 = spe
-        self._pos: v3 = pos
-        self._model: m44 = m44.create_from_translation(self._pos)
-
-    def set_pos(self, pos: v3):
-        self._pos = pos
-        self._model = m44.create_from_translation(self._pos)
-
-    def use_light(self, shader: Shader) -> None:
-        shader.set_v3("light.ambient", self.ambient)
-        shader.set_v3("light.diffuse", self.diffusion)
-        shader.set_v3("light.specular", self.specular)
-        shader.set_v3("lightPos", self._pos)
 
 class Window:
     def __init__(self, width: int, height: int, title: str):
@@ -56,26 +39,28 @@ class Window:
         self._prepare_matrices()
 
         # Shaders
+        self.shaders = {
+            "phong": Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl"),
+            "gouraud": Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl"),
+            "light_source": Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl"),
+        }
         self.current_shader: Shader = None
-        self.normal_shader = Shader("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl")
-        self.phong_shader = Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl")
-        self.gouraud_shader = Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl")
-        self.light_source_shader = Shader("shaders/light_source_vs.glsl", "shaders/light_source_fs.glsl")
-        self.use_shader(self.gouraud_shader)
+        self.use_shader(self.shaders["gouraud"])
 
         self.scene = [
             LoadedObject("data/floor.obj"),
-            LoadedObject("data/uv_sphere.obj", x=2, y=1.5, z=-1),
-            LoadedObject("data/box/box-T2F_N3F_V3F.obj", x=-1, y=1, z=-2),
-            LoadedObject("data/monkey.obj", x=0, y=1, z=1),
+            LoadedObject("data/uv_sphere.obj", 2, 1.5, -1),
+            LoadedObject("data/box/box-T2F_N3F_V3F.obj", -1, 1, -2),
+            LoadedObject("data/monkey.obj", 0, 1, 1),
         ]
 
-        self.light_obj = LoadedObject("data/box/box-V3F.obj", x=1.2, y=3.0, z=2.0)
+        self.light_obj = LoadedObject("data/box/box-V3F.obj")  # Box to represent light sources
         self.light = Light(amb=v3([0.3, 0.3, 0.3]),
                            dif=v3([1.0, 1.0, 1.0]),
                            spe=v3([1.0, 1.0, 1.0]),
-                           pos=v3([1.2, 3.0, 2.0]))
-
+                           pos=v3([1.2, 3.0, 2.0]),
+                           lss=self.shaders["light_source"],
+                           obj=self.light_obj)
 
     def use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
@@ -111,75 +96,50 @@ class Window:
         self.update_projection()
 
     def main_loop(self) -> None:
-        cnt = 0
+        # cnt = 0
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
 
             # Clear buffers
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-            # self.current_shader.set_switcher(1)
+            # Advance objects in their movements
+            self.move_objects()
 
-            rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
-            rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
-            trans_y = math.sin(glfw.get_time())
-            translation = m44.create_from_translation(v3([0, trans_y, 0]))
-            rotation = m44.multiply(rot_x, rot_y)
-
-            upside_down = m44.create_from_x_rotation(math.pi)
-            model_1 = m44.multiply(upside_down, self.scene[1].pos)
-            model_1 = m44.multiply(translation, model_1)
-            model_1 = m44.multiply(rot_y, model_1)
-            self.scene[1].model = model_1
-
-            # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
-            self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
-
-            # View
+            # Camera
             cam_x = math.sin(glfw.get_time() * 0.5) * 7
             cam_z = math.cos(glfw.get_time() * 0.5) * 7
             # self._eye = v3([-cam_x, 3.0, cam_z])
-            cam_front = v3([0, 0, -1])
+            # cam_front = v3([0, 0, -1])
             # self._target = self._eye + cam_front   # Front facing camera
             # self._target = v3.from_matrix44_translation(model_1)  # targeted moving camera
 
-            self.use_shader(self.light_source_shader)
-            self.light_obj.pos = m44.create_from_translation(v3([cam_x, 4.0, cam_z]))
-            self.light_obj.model = m44.multiply(m44.create_from_scale(v3([0.2, 0.2, 0.2])), self.light_obj.pos)
-            self.light.set_pos(v3([cam_x, 4.0, cam_z]))
-
-            # print(self.light_obj.pos)
-            # print(self.light_obj.model)
-            self.light_obj.draw(self.current_shader)
-
-            # Lighting shader
-            # if cnt < 1000:
-            #     self.use_shader(self.gouraud_shader)
-            # else:
-            self.use_shader(self.phong_shader)
-                # if cnt == 2000:
-                #     cnt = 0
-            # cnt += 1
-
-            self.current_shader.set_v3("viewPos", self._eye)
-
+            # Light
             # light_color = v3([
             #     math.sin(glfw.get_time() * 2.0),
             #     math.sin(glfw.get_time() * 0.7),
             #     math.sin(glfw.get_time() * 1.3)
             # ])
-            #
-            # diffuse_color = light_color * v3([0.5]*3)
-            # ambient_color = diffuse_color * v3([0.2]*3)
-            #
-            # self.current_shader.set_v3("light.ambient", ambient_color)
-            # self.current_shader.set_v3("light.diffuse", diffuse_color)
+            # self.light.diffuse = light_color * v3([0.5] * 3)
+            # self.light.ambient = self.light.diffuse * v3([0.2] * 3)
 
-            # self.current_shader.set_v3("lightPos", v3.from_matrix44_translation(self.light_obj.pos))
-            #
-            # self.current_shader.set_v3("light.ambient", v3([0.3, 0.3, 0.3]))
-            # self.current_shader.set_v3("light.diffuse", v3([1.0, 1.0, 1.0]))
-            # self.current_shader.set_v3("light.specular", v3([1.0, 1.0, 1.0]))
+            self.light.set_pos(v3([cam_x, 4.0, cam_z]))
+            self.use_shader(self.shaders["light_source"])
+            self.light.draw()
+
+            # TODO: Handle changing shaders by keyboard shortcuts
+            # Choose lighting shader
+            # if cnt < 1000:
+            #     self.use_shader(self.gouraud_shader)
+            # else:
+            self.use_shader(self.shaders["phong"])
+            #   if cnt == 2000:
+            #         cnt = 0
+            # cnt += 1
+
+            # TODO: Consider changing back to uploading viewPos or change Gouraud to process things in view space
+            self.current_shader.set_v3("viewPos", self._eye)
+
             self.light.use_light(self.current_shader)
             # Draw shaded objects
             for o in self.scene:
@@ -187,6 +147,22 @@ class Window:
 
             # Swap buffers
             glfw.swap_buffers(self._window)
+
+    def move_objects(self):
+        rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
+        rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
+        trans_y = math.sin(glfw.get_time())
+        translation = m44.create_from_translation(v3([0, trans_y, 0]))
+        rotation = m44.multiply(rot_x, rot_y)
+
+        upside_down = m44.create_from_x_rotation(math.pi)
+        model_1 = m44.multiply(upside_down, self.scene[1].pos)
+        model_1 = m44.multiply(translation, model_1)
+        model_1 = m44.multiply(rot_y, model_1)
+        self.scene[1].model = model_1
+
+        # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
+        self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
 
 def main():

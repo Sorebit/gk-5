@@ -106,13 +106,16 @@ class LoadedObject:
         img_data = image.convert("RGBA").tobytes()
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
 
-    def draw(self, shader: Shader) -> None:
+    def draw(self, shader: Shader, model=None) -> None:
         """Draws loaded object onto GL buffer with selected shader."""
         # shader.use_program()  # Not really sure if that's how you should do it
         for vao, tex, length, mat in zip(self.vaos, self.textures, self.lengths, self.materials):
             glBindVertexArray(vao)
             glBindTexture(GL_TEXTURE_2D, tex)
-            shader.set_model(self.model)
+            if model is not None:
+                shader.set_model(model)
+            else:
+                shader.set_model(self.model)
             shader.set_v3("material.ambient", mat.ambient)
             shader.set_v3("material.diffuse", mat.diffuse)
             shader.set_v3("material.specular", mat.specular)
