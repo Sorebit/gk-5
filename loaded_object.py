@@ -120,8 +120,4 @@ class LoadedObject:
             shader.set_v3("material.diffuse", mat.diffuse)
             shader.set_v3("material.specular", mat.specular)
             shader.set_float("material.shininess", mat.shininess)
-            # shader.set_v3("material.ambient", v3([1.0, 0.5, 0.31]))
-            # shader.set_v3("material.diffuse", v3([1.0, 0.5, 0.31]))
-            # shader.set_v3("material.specular", v3([0.5, 0.5, 0.5])) # specular lighting doesn't have full effect on this object's material
-            # shader.set_float("material.shininess", 32.0)
             glDrawArrays(GL_TRIANGLES, 0, length)

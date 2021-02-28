@@ -19,8 +19,6 @@ class Shader:
         self._model_loc = glGetUniformLocation(self._shader, "model")
         self._projection_loc = glGetUniformLocation(self._shader, "projection")
         self._view_loc = glGetUniformLocation(self._shader, "view")
-        self._switcher_loc = glGetUniformLocation(self._shader, "switcher")
-        # self._light_color_loc = glGetUniformLocation(self._shader, "light_color")
 
     def use(self) -> None:
         glUseProgram(self._shader)
