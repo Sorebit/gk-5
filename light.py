@@ -38,4 +38,4 @@ class Light:
         shader.set_v3("light.ambient", self.ambient)
         shader.set_v3("light.diffuse", self.diffuse)
         shader.set_v3("light.specular", self.specular)
-        shader.set_v3("lightPos", self._pos)
+        shader.set_v3("light.position", self._pos)

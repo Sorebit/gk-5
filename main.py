@@ -48,6 +48,7 @@ class Window:
         self._prepare_matrices()
 
         # Shaders
+        # TODO: Update Gouraud
         self.shaders = {
             "phong": Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl"),
             "gouraud": Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl"),
@@ -71,6 +72,7 @@ class Window:
                            pos=v3([1.2, 3.0, 2.0]),
                            lss=self.shaders["light_source"],
                            obj=self.light_obj)
+        self.sun_dir = v3([-0.2, -1.0, -0.3])  # TODO: animate direction and color for night/day cycle
 
     def use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
@@ -142,7 +144,6 @@ class Window:
 
             # Draw shaded objects
             self.use_shader(self.shaders[self.sel_shader_key])
-            # TODO: Consider changing back to uploading viewPos or change Gouraud to process things in view space
             self.current_shader.set_v3("viewPos", self._eye)
 
             self.light.use_light(self.current_shader)
