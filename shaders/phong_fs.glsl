@@ -39,7 +39,6 @@ void main()
     vec3 diffuse = light.diffuse * (diff * material.diffuse);
 
     // Specular
-    // the viewer is always at (0,0,0) in view-space, so viewDir is (0,0,0) - Position => -Position
     vec3 viewDir = normalize(viewPos - frag_pos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
@@ -48,6 +47,5 @@ void main()
     vec4 texel = texture(s_texture, v_texture);
     vec3 result = (ambient + diffuse + specular) * texel.rgb;
 
-//    FragColor = vec4(result, 1.0);
     FragColor = vec4(result, texel.a);
 }
