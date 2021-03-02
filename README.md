@@ -26,7 +26,7 @@
     - [ ] Min. jedne stałe (nieporuszające się) żródło światła (punktowe lub reflektor)
 - [ ] mgła - płynna zmiana
 - [ ] noc/dzień - płynne zmiany
-- [ ] "zanikanie" światła wraz z odległością
+- [x] "zanikanie" światła wraz z odległością
 
 Dodatkowo jeden element do wyboru:
 - [ ] lustro na scenie 

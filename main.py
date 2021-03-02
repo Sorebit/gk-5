@@ -5,7 +5,7 @@ import math
 
 from shader import Shader
 from loaded_object import LoadedObject
-from light import Light
+from light import DirLight, PointLight, SpotLight
 
 
 class Window:
@@ -22,9 +22,9 @@ class Window:
             raise Exception("Window cannot be created!")
 
         # Set resize handler
-        glfw.set_window_size_callback(self._window, self.on_resize)
+        glfw.set_window_size_callback(self._window, self._on_resize)
         # Set keyboard input handler
-        glfw.set_key_callback(self._window, self.on_key_input)
+        glfw.set_key_callback(self._window, self._on_key_input)
         # Set window as current context
         glfw.make_context_current(self._window)
 
@@ -56,8 +56,9 @@ class Window:
         }
         self.current_shader: Shader = None
         self.sel_shader_key: str = "phong"  # Shaders dict key for selected shader
-        self.use_shader(self.shaders[self.sel_shader_key])
+        self._use_shader(self.shaders[self.sel_shader_key])
 
+        # Scene
         self.scene = [
             LoadedObject("data/floor.obj"),
             LoadedObject("data/uv_sphere.obj", 2, 1.5, -1),
@@ -65,21 +66,39 @@ class Window:
             LoadedObject("data/monkey.obj", 0, 1, 1),
         ]
 
+        # Lighting
         self.light_obj = LoadedObject("data/box/box-V3F.obj")  # Box to represent light sources
-        self.light = Light(amb=v3([0.3, 0.3, 0.3]),
-                           dif=v3([1.0, 1.0, 1.0]),
-                           spe=v3([1.0, 1.0, 1.0]),
-                           pos=v3([1.2, 3.0, 2.0]),
-                           lss=self.shaders["light_source"],
-                           obj=self.light_obj)
-        self.sun_dir = v3([-0.2, -1.0, -0.3])  # TODO: animate direction and color for night/day cycle
 
-    def use_shader(self, shader: Shader) -> None:
+        # TODO: animate direction and color for night/day cycle
+        self.sun_moon = DirLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.4, 0.4, 0.8]), spe=v3([0.5, 0.5, 0.8]),
+                                 direction=v3([-0.2, -1.0, -0.3]), uni_name="dirLight")
+        point_lights_pos = [
+            v3([0.7, 0.2, 2.0]),
+            v3([2.3, -3.3, -4.0]),
+            v3([-1.0, 3.0, -2.0]),
+            v3([0.0, 0.0, -3.0])
+        ]
+        self.point_lights = list(self._pl_gen(point_lights_pos))
+
+        self.spot_light = SpotLight(amb=v3([0.0, 0.0, 0.0]), dif=v3([0.0, 1.0, 0.5]), spe=v3([0.0, 1.0, 0.5]),
+                                    k=v3([1.0, 0.09, 0.032]), pos=v3([5.0, 1.5, -1.0]), direction=v3([-1.0, -0.2, 0.0]),
+                                    co=math.cos(math.radians(12.5)), oco=math.cos(math.radians(15.0)),
+                                    uni_name="spotLight", lss=self.shaders["light_source"], obj=self.light_obj)
+
+    def _pl_gen(self, positions):
+        """Point lights generator."""
+        for i, p in enumerate(positions):
+            light = PointLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.8, 0.8, 0.8]), spe=v3([1.0, 1.0, 1.0]),
+                               k=v3([1.0, 0.09, 0.032]), pos=p,
+                               uni_name=f"pointLights[{i}]", lss=self.shaders["light_source"], obj=self.light_obj)
+            yield light
+
+    def _use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
         self.current_shader.use()
         # Update matrices after changing shader
-        self.update_projection()
-        self.update_view()
+        self._update_projection()
+        self._update_view()
 
     def _prepare_matrices(self) -> None:
         # Projection matrix
@@ -91,23 +110,23 @@ class Window:
         self._target: v3 = self._static_target
         self._up: v3 = v3([0, 1, 0])
 
-    def update_view(self) -> None:
+    def _update_view(self) -> None:
         """Recalculate view matrix and upload it to shader."""
         self.view_matrix = m44.create_look_at(self._eye, self._target, self._up)
         self.current_shader.set_view(self.view_matrix)
 
-    def update_projection(self) -> None:
+    def _update_projection(self) -> None:
         """Recalculate projection matrix and upload it to shader."""
         a = self._width / self._height
         self.projection_matrix = m44.create_perspective_projection(self._fov, a, self._near, self._far)
         self.current_shader.set_projection(self.projection_matrix)
 
-    def on_resize(self, _window, width, height) -> None:
+    def _on_resize(self, _window, width, height) -> None:
         self._width, self._height = width, height
         glViewport(0, 0, self._width, self._height)
-        self.update_projection()
+        self._update_projection()
 
-    def on_key_input(self, _window, key, _scancode, action, _mode):
+    def _on_key_input(self, _window, key, _scancode, action, _mode) -> None:
         if action != glfw.PRESS:
             return
         cam = {glfw.KEY_1: "static", glfw.KEY_2: "following", glfw.KEY_3: "moving"}
@@ -119,42 +138,7 @@ class Window:
         elif key == glfw.KEY_P:
             self.sel_shader_key = "phong"
 
-    def main_loop(self) -> None:
-        while not glfw.window_should_close(self._window):
-            glfw.poll_events()
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-            self.move_objects()
-            self.process_camera()
-
-            # Light
-            # light_color = v3([
-            #     math.sin(glfw.get_time() * 2.0),
-            #     math.sin(glfw.get_time() * 0.7),
-            #     math.sin(glfw.get_time() * 1.3)
-            # ])
-            # self.light.diffuse = light_color * v3([0.5] * 3)
-            # self.light.ambient = self.light.diffuse * v3([0.2] * 3)
-
-            light_x = math.sin(glfw.get_time() * 0.5) * 7
-            light_z = math.cos(glfw.get_time() * 0.5) * 7
-            self.light.set_pos(v3([light_x, 4.0, light_z]))
-            self.use_shader(self.shaders["light_source"])
-            self.light.draw()
-
-            # Draw shaded objects
-            self.use_shader(self.shaders[self.sel_shader_key])
-            self.current_shader.set_v3("viewPos", self._eye)
-
-            self.light.use_light(self.current_shader)
-
-            for o in self.scene:
-                o.draw(self.current_shader)
-
-            # Swap buffers
-            glfw.swap_buffers(self._window)
-
-    def move_objects(self):
+    def _move_objects(self) -> None:
         rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
         rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
         trans_y = math.sin(glfw.get_time())
@@ -170,7 +154,7 @@ class Window:
         # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
         self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
 
-    def process_camera(self):
+    def _process_camera(self) -> None:
         if not self.update_camera:
             return
 
@@ -186,7 +170,45 @@ class Window:
             cam_z = math.cos(glfw.get_time() * 0.5) * 7
             self._eye = v3([-cam_x, 3.0, cam_z])
             self._target = self._eye + self._camera_front  # Front facing camera
-        self.update_view()
+        self._update_view()
+
+    def _draw_light_sources(self) -> None:
+        """Draws light sources with appropriate shaders."""
+        self._use_shader(self.shaders["light_source"])
+        for light in self.point_lights:
+            light.draw()
+        self.spot_light.draw()
+
+    def _draw_objects(self) -> None:
+        """Sets currently selected shader, then draws shaded objects."""
+        self._use_shader(self.shaders[self.sel_shader_key])
+        self.current_shader.set_v3("viewPos", self._eye)
+
+        # Use lights
+        self.sun_moon.use_light(self.current_shader)
+        for light in self.point_lights:
+            light.use_light(self.current_shader)
+        self.spot_light.use_light(self.current_shader)
+
+        # Draw objects
+        for o in self.scene:
+            o.draw(self.current_shader)
+
+    def main_loop(self) -> None:
+        while not glfw.window_should_close(self._window):
+            glfw.poll_events()
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+            # Update scene
+            self._move_objects()
+            self._process_camera()
+
+            # Draw scene
+            self._draw_light_sources()
+            self._draw_objects()
+
+            # Swap buffers
+            glfw.swap_buffers(self._window)
 
 
 def main():
