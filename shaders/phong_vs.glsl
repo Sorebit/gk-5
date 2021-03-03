@@ -9,6 +9,7 @@ out vec3 frag_pos;
 out vec3 v_normal;
 out vec3 v_color;
 out vec2 v_texture;
+out vec4 ioEyeSpacePosition;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -21,5 +22,6 @@ void main()
     v_texture = a_texture;
     v_color = a_color; // TODO: remove?
 
+    ioEyeSpacePosition = view * vec4(frag_pos, 1.0);
     gl_Position = projection * view * model * vec4(a_pos, 1.0);
 }

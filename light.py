@@ -28,7 +28,7 @@ class DirLight(AbstractLight):
         self._direction: v3 = direction
 
     def use_light(self, shader: Shader) -> None:
-        super(DirLight, self).use_light(shader)
+        super().use_light(shader)
 
         shader.set_v3(f"{self._uniform_name}.direction", self._direction)
 
@@ -71,7 +71,7 @@ class PointLight(AbstractLight):
         self._model = m44.multiply(self._scale_matrix, pos_matrix)
 
     def use_light(self, shader: Shader) -> None:
-        super(PointLight, self).use_light(shader)
+        super().use_light(shader)
 
         shader.set_v3(f"{self._uniform_name}.position", self._pos)
         shader.set_float(f"{self._uniform_name}.constant", self._constant)
@@ -79,8 +79,9 @@ class PointLight(AbstractLight):
         shader.set_float(f"{self._uniform_name}.quadratic", self._quadratic)
 
     def draw(self) -> None:
-        self._light_source_shader.set_v3("color", self._diffuse)
-        self._obj.draw(self._light_source_shader, model=self._model)
+        if self._obj is not None:
+            self._light_source_shader.set_v3("color", self._diffuse)
+            self._obj.draw(self._light_source_shader, model=self._model)
 
 
 class SpotLight(PointLight):
@@ -109,7 +110,7 @@ class SpotLight(PointLight):
         self._outer_cut_off: float = oco
 
     def use_light(self, shader: Shader) -> None:
-        super(SpotLight, self).use_light(shader)
+        super().use_light(shader)
 
         shader.set_v3(f"{self._uniform_name}.direction", self._direction)
         shader.set_float(f"{self._uniform_name}.cutOff", self._cut_off)

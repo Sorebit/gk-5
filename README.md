@@ -24,7 +24,7 @@
     - [ ] min. jeden reflektor na poruszającym się obiekcie (np. światła samochodu)
     - [ ] Musi istnieć możliwość zmiany kierunku świecenia reflektora (względnej) umieszczonego na obiekcie ruchomym
     - [ ] Min. jedne stałe (nieporuszające się) żródło światła (punktowe lub reflektor)
-- [ ] mgła - płynna zmiana
+- [x] mgła - płynna zmiana
 - [ ] noc/dzień - płynne zmiany
 - [x] "zanikanie" światła wraz z odległością
 

@@ -51,12 +51,20 @@ struct SpotLight {
     vec3 specular;
 };
 
+struct FogParams
+{
+	vec3 color;
+	float start;
+	float end;
+};
+
 #define NR_POINT_LIGHTS 4
 
 in vec3 v_normal;
 in vec3 frag_pos;
 in vec3 v_color;
 in vec2 v_texture;
+in vec4 ioEyeSpacePosition;
 
 uniform vec3 viewPos;
 uniform Material material;
@@ -64,12 +72,14 @@ uniform Light light;
 uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLight;
+uniform FogParams fogParams;
 
 uniform sampler2D s_texture;
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec4 texel);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec4 texel);
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec4 texel);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+float getFogFactor(FogParams params, float fogCoordinate);
 
 void main()
 {
@@ -82,10 +92,14 @@ void main()
 
     // Point lights
     for(int i = 0; i < NR_POINT_LIGHTS; i++)
-        result += CalcPointLight(pointLights[i], norm, frag_pos, viewDir, texel);
+        result += CalcPointLight(pointLights[i], norm, frag_pos, viewDir) * texel.rgb;
 
     // Spot light
-    result += CalcSpotLight(spotLight, norm, frag_pos, viewDir, texel);
+    result += CalcSpotLight(spotLight, norm, frag_pos, viewDir) * texel.rgb;
+
+    // Apply fog
+    float fogCoordinate = abs(ioEyeSpacePosition.z / ioEyeSpacePosition.w);
+    result = mix(result, fogParams.color, getFogFactor(fogParams, fogCoordinate));
 
     FragColor = vec4(result, texel.a);
 }
@@ -106,8 +120,7 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec4 texel)
     return (ambient + diffuse + specular) * texel.rgb;
 }
 
-
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec4 texel)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -125,11 +138,11 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     ambient  *= attenuation;
     diffuse  *= attenuation;
     specular *= attenuation;
-    return (ambient + diffuse + specular) * texel.rgb;
+
+    return (ambient + diffuse + specular);
 }
 
-// calculates the color when using a spot light.
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec4 texel)
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -140,16 +153,29 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
     // attenuation
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-    // spotlight intensity
-    float theta = dot(lightDir, normalize(-light.direction));
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     // combine results
     vec3 ambient  = light.ambient  * material.ambient;
     vec3 diffuse  = light.diffuse  * diff * material.diffuse;
     vec3 specular = light.specular * spec * material.specular;
-    ambient  *= attenuation * intensity;
-    diffuse  *= attenuation * intensity;
-    specular *= attenuation * intensity;
-    return (ambient + diffuse + specular) * texel.rgb;
+    ambient  *= attenuation;
+    diffuse  *= attenuation;
+    specular *= attenuation;
+
+    // spotlight intensity
+    float theta = dot(lightDir, normalize(-light.direction));
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    ambient  *= intensity;
+    diffuse  *= intensity;
+    specular *= intensity;
+
+    return (ambient + diffuse + specular);
+}
+
+float getFogFactor(FogParams params, float fogCoordinate)
+{
+    float fogLength = params.end - params.start;
+    float result = (params.end - fogCoordinate) / fogLength;
+
+	return 1.0 - clamp(result, 0.0, 1.0);;
 }

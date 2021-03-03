@@ -29,7 +29,8 @@ class Window:
         glfw.make_context_current(self._window)
 
         # Set options
-        glClearColor(0.6, 0.7, 0.7, 1)
+        self._background_color = [0.7, 0.7, 0.6]
+        glClearColor(*self._background_color, 1)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -67,7 +68,8 @@ class Window:
         ]
 
         # Lighting
-        self.light_obj = LoadedObject("data/box/box-V3F.obj")  # Box to represent light sources
+        self._point_light_obj = LoadedObject("data/uv_sphere.obj")  # sphere to represent point light sources
+        self._light_obj = LoadedObject("data/box/box-V3F.obj")  # Box to represent light sources
 
         # TODO: animate direction and color for night/day cycle
         self.sun_moon = DirLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.4, 0.4, 0.8]), spe=v3([0.5, 0.5, 0.8]),
@@ -83,14 +85,14 @@ class Window:
         self.spot_light = SpotLight(amb=v3([0.0, 0.0, 0.0]), dif=v3([0.0, 1.0, 0.5]), spe=v3([0.0, 1.0, 0.5]),
                                     k=v3([1.0, 0.09, 0.032]), pos=v3([5.0, 1.5, -1.0]), direction=v3([-1.0, -0.2, 0.0]),
                                     co=math.cos(math.radians(12.5)), oco=math.cos(math.radians(15.0)),
-                                    uni_name="spotLight", lss=self.shaders["light_source"], obj=self.light_obj)
+                                    uni_name="spotLight", lss=self.shaders["light_source"], obj=self._light_obj)
 
     def _pl_gen(self, positions):
         """Point lights generator."""
         for i, p in enumerate(positions):
             light = PointLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.8, 0.8, 0.8]), spe=v3([1.0, 1.0, 1.0]),
                                k=v3([1.0, 0.09, 0.032]), pos=p,
-                               uni_name=f"pointLights[{i}]", lss=self.shaders["light_source"], obj=self.light_obj)
+                               uni_name=f"pointLights[{i}]", lss=self.shaders["light_source"], obj=self._point_light_obj)
             yield light
 
     def _use_shader(self, shader: Shader) -> None:
@@ -183,6 +185,11 @@ class Window:
         """Sets currently selected shader, then draws shaded objects."""
         self._use_shader(self.shaders[self.sel_shader_key])
         self.current_shader.set_v3("viewPos", self._eye)
+
+        fog_start = math.sin(glfw.get_time() * 0.5) * 6 + 6
+        self.current_shader.set_v3("fogParams.color", v3(self._background_color))
+        self.current_shader.set_float("fogParams.start", fog_start)
+        self.current_shader.set_float("fogParams.end", fog_start + 10)
 
         # Use lights
         self.sun_moon.use_light(self.current_shader)
