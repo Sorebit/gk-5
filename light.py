@@ -57,18 +57,20 @@ class PointLight(AbstractLight):
 
         self._light_source_shader: Shader = lss
 
-        self._pos: v3 = pos
         self._scale: float = 0.1
         self._scale_matrix: m44 = m44.create_from_scale(v3([self._scale] * 3))
-        pos_matrix = m44.create_from_translation(self._pos)
-        self._model: m44 = m44.multiply(self._scale_matrix, pos_matrix)
+        self._pos, self._model = self._set_pos(pos)
 
         self._obj: LoadedObject = obj
 
     def set_pos(self, pos: v3):
-        self._pos = pos
-        pos_matrix = m44.create_from_translation(self._pos)
-        self._model = m44.multiply(self._scale_matrix, pos_matrix)
+        self._pos, self._model = self._set_pos(pos)
+
+    def _set_pos(self, pos: v3) -> (v3, m44):
+        pos_matrix = m44.create_from_translation(pos)
+        model = m44.multiply(self._scale_matrix, pos_matrix)
+
+        return pos, model
 
     def use_light(self, shader: Shader) -> None:
         super().use_light(shader)
@@ -115,3 +117,6 @@ class SpotLight(PointLight):
         shader.set_v3(f"{self._uniform_name}.direction", self._direction)
         shader.set_float(f"{self._uniform_name}.cutOff", self._cut_off)
         shader.set_float(f"{self._uniform_name}.outerCutOff", self._outer_cut_off)
+
+    def set_dir(self, direction: v3):
+        self._direction = direction

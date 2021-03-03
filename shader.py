@@ -24,22 +24,25 @@ class Shader:
     def use(self) -> None:
         glUseProgram(self._shader)
 
-    def set_model(self, matrix: m44):
+    def set_model(self, matrix: m44) -> None:
         glUniformMatrix4fv(self._get_loc("model"), 1, GL_FALSE, matrix)
 
-    def set_projection(self, matrix: m44):
+    def set_projection(self, matrix: m44) -> None:
         glUniformMatrix4fv(self._get_loc("projection"), 1, GL_FALSE, matrix)
 
-    def set_view(self, matrix: m44):
+    def set_view(self, matrix: m44) -> None:
         glUniformMatrix4fv(self._get_loc("view"), 1, GL_FALSE, matrix)
+
+    def set_bool(self, uniform_name: str, val: bool) -> None:
+        glUniform1i(self._get_loc(uniform_name), val)
 
     def set_float(self, uniform_name: str, val: float) -> None:
         glUniform1f(self._get_loc(uniform_name), val)
 
-    def set_v3(self, uniform_name: str, val: v3):
+    def set_v3(self, uniform_name: str, val: v3) -> None:
         glUniform3fv(self._get_loc(uniform_name), 1, val)
 
-    def _get_loc(self, uniform_name: str):
+    def _get_loc(self, uniform_name: str) -> None:
         """Lazy uniform location storage."""
         if uniform_name not in self._loc:
             self._loc[uniform_name] = glGetUniformLocation(self._shader, uniform_name)

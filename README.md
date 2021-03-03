@@ -61,3 +61,4 @@ Dodatkowo jeden element do wyboru:
 
 - `O` - Gouraud
 - `P` - Phong
+- `F` - Mgła

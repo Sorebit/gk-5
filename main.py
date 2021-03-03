@@ -39,8 +39,7 @@ class Window:
         self.sel_camera: str = "static"  # Selected camera name
         self.update_camera: bool = True
         self._static_target: v3 = v3([0, 2.0, 0])
-        self._default_eye: v3 = v3([math.sin(0) * 5, 8, math.cos(0) * 10])
-        self._camera_front = v3([0, 0, -1])
+        self._default_eye: v3 = v3([math.sin(0) * 10, 8, math.cos(0) * 10])
 
         # Matrices
         self._fov, self._near, self._far = None, None, None
@@ -58,14 +57,15 @@ class Window:
         self.current_shader: Shader = None
         self.sel_shader_key: str = "phong"  # Shaders dict key for selected shader
         self._use_shader(self.shaders[self.sel_shader_key])
+        self._fog_on = False
 
         # Scene
-        self.scene = [
-            LoadedObject("data/floor.obj"),
-            LoadedObject("data/uv_sphere.obj", 2, 1.5, -1),
-            LoadedObject("data/box/box-T2F_N3F_V3F.obj", -1, 1, -2),
-            LoadedObject("data/monkey.obj", 0, 1, 1),
-        ]
+        self.scene = {
+            "floor": LoadedObject("data/floor.obj"),
+            "earth": LoadedObject("data/uv_sphere.obj", 0, 1.4 * 1.5, 0, scale=1.4),
+            "race_monkey": LoadedObject("data/monkey.obj", -3, 1.2, 0, ),
+        }
+        self.scene = {**dict(self._box_gen(6, 7.0)), **self.scene}  # Generate boxes
 
         # Lighting
         self._point_light_obj = LoadedObject("data/uv_sphere.obj")  # sphere to represent point light sources
@@ -74,26 +74,47 @@ class Window:
         # TODO: animate direction and color for night/day cycle
         self.sun_moon = DirLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.4, 0.4, 0.8]), spe=v3([0.5, 0.5, 0.8]),
                                  direction=v3([-0.2, -1.0, -0.3]), uni_name="dirLight")
-        point_lights_pos = [
-            v3([0.7, 0.2, 2.0]),
-            v3([2.3, -3.3, -4.0]),
-            v3([-1.0, 3.0, -2.0]),
-            v3([0.0, 0.0, -3.0])
+        point_lights = [
+            (v3([5.5, 0.2, -5.5]), v3([1.0, 0.3, 0.3])),  # red
+            (v3([-5.5, 0.2, 0.0]), v3([1.0, 1.0, 0.3])),  # yellow
+            (v3([7.5, 2.2, 1.0]), v3([0.3, 0.3, 1.0])),  # blue
+            (v3([3.0, 0.2, 3.0]), v3([1.0, 1.0, 1.0]))  # purple
         ]
-        self.point_lights = list(self._pl_gen(point_lights_pos))
+        self.point_lights = list(self._pl_gen(point_lights))
 
+        self.spot_light_offset = v3([0.0, -0.8, 0.75])  # Relative offset from monkey
+        self.spot_light_def_dir = v3([0.0, -0.2, 0.0])  # Default direction (same as monkey)
+        self.spot_light_angle_offset = 0 * math.pi / 2  # TODO: Add changing with keyboard
         self.spot_light = SpotLight(amb=v3([0.0, 0.0, 0.0]), dif=v3([0.0, 1.0, 0.5]), spe=v3([0.0, 1.0, 0.5]),
-                                    k=v3([1.0, 0.09, 0.032]), pos=v3([5.0, 1.5, -1.0]), direction=v3([-1.0, -0.2, 0.0]),
-                                    co=math.cos(math.radians(12.5)), oco=math.cos(math.radians(15.0)),
+                                    k=v3([1.0, 0.07, 0.017]), pos=v3([0.0] * 3), direction=self.spot_light_def_dir,
+                                    co=math.cos(math.radians(22.5)), oco=math.cos(math.radians(25.0)),
                                     uni_name="spotLight", lss=self.shaders["light_source"], obj=self._light_obj)
 
     def _pl_gen(self, positions):
         """Point lights generator."""
-        for i, p in enumerate(positions):
-            light = PointLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.8, 0.8, 0.8]), spe=v3([1.0, 1.0, 1.0]),
-                               k=v3([1.0, 0.09, 0.032]), pos=p,
-                               uni_name=f"pointLights[{i}]", lss=self.shaders["light_source"], obj=self._point_light_obj)
+        for i, (p, c) in enumerate(positions):
+            light = PointLight(amb=0.05 * c, dif=1.0 * c, spe=1.0 * c,
+                               k=v3([1.0, 0.07, 0.017]), pos=p,
+                               uni_name=f"pointLights[{i}]", lss=self.shaders["light_source"],
+                               obj=self._point_light_obj)
             yield light
+
+    def _box_gen(self, num, mx):
+        box_path = "data/box/box-T2F_N3F_V3F.obj"
+        p = lambda n: (mx * 2) / num * (n % num) - mx + 1
+
+        for i in range(num * 4):
+            if i < num:
+                yield f"box_{i}", LoadedObject(box_path, p(i), 1.0, -mx - 1)
+                yield f"box_{i}_", LoadedObject(box_path, p(i), 3.0, -mx - 1)
+            elif i < num * 2:
+                yield f"box_{i}", LoadedObject(box_path, p(i), 1.0, mx + 1)
+                yield f"box_{i}_", LoadedObject(box_path, p(i), 3.0, mx + 1)
+            elif i < num * 3:
+                yield f"box_{i + 12}", LoadedObject(box_path, mx + 1, 1.0, p(i))
+                yield f"box_{i + 12}_", LoadedObject(box_path, mx + 1, 3.0, p(i))
+            else:
+                yield f"box_{i + 18}", LoadedObject(box_path, -mx - 1, 1.0, p(i))
 
     def _use_shader(self, shader: Shader) -> None:
         self.current_shader = shader
@@ -139,22 +160,35 @@ class Window:
             self.sel_shader_key = "gouraud"
         elif key == glfw.KEY_P:
             self.sel_shader_key = "phong"
+        elif key == glfw.KEY_F:
+            self._fog_on = not self._fog_on
 
     def _move_objects(self) -> None:
-        rot_x = m44.create_from_x_rotation(0.5 * glfw.get_time())
-        rot_y = m44.create_from_y_rotation(0.8 * glfw.get_time())
-        trans_y = math.sin(glfw.get_time())
+        time = glfw.get_time()
+        rot_y = m44.create_from_y_rotation(-0.5 * time)
+        trans_y = math.sin(time)
         translation = m44.create_from_translation(v3([0, trans_y, 0]))
-        rotation = m44.multiply(rot_x, rot_y)
 
-        upside_down = m44.create_from_x_rotation(math.pi)
-        model_1 = m44.multiply(upside_down, self.scene[1].pos)
-        model_1 = m44.multiply(translation, model_1)
-        model_1 = m44.multiply(rot_y, model_1)
-        self.scene[1].model = model_1
+        model = m44.create_from_x_rotation(math.pi)  # upside down
+        model = m44.multiply(translation, m44.multiply(model, self.scene["earth"].pos))  # up-down movement
+        self.scene["earth"].model = m44.multiply(rot_y, model)  # rotation
 
-        # self.scene[2].model = m44.multiply(rotation, self.scene[2].pos)
-        self.scene[3].model = m44.multiply(rotation, self.scene[3].pos)
+        # Move and orientate race_monkey
+        radius = 5
+        translation = v3([math.sin(time) * radius, 1.2, math.cos(time) * radius])
+        o = self.scene["race_monkey"]
+        o.set_pos(translation)
+        o.model = m44.multiply(m44.create_from_y_rotation(-time - math.pi / 2), o.model)
+
+        # Move and orientate spotlight relatively to race_monkey
+        pos = m44.multiply(m44.create_from_translation(self.spot_light_offset), o.model)
+        self.spot_light.set_pos(v3.from_matrix44_translation(pos))
+        light_dir = self._get_monkey_look_dir() + self.spot_light_def_dir
+        self.spot_light.set_dir(light_dir)
+
+    def _get_monkey_look_dir(self):
+        angle = glfw.get_time() + math.pi / 2 + self.spot_light_angle_offset
+        return v3([math.sin(angle), 0.0, math.cos(angle)])
 
     def _process_camera(self) -> None:
         if not self.update_camera:
@@ -166,17 +200,25 @@ class Window:
             self.update_camera = False  # Static camera needs to be calculated only once.
         elif self.sel_camera == "following":
             self._eye = self._default_eye
-            self._target = v3.from_matrix44_translation(self.scene[1].model)
+            self._target = v3.from_matrix44_translation(self.scene["race_monkey"].model)
         elif self.sel_camera == "moving":
-            cam_x = math.sin(glfw.get_time() * 0.5) * 7
-            cam_z = math.cos(glfw.get_time() * 0.5) * 7
-            self._eye = v3([-cam_x, 3.0, cam_z])
-            self._target = self._eye + self._camera_front  # Front facing camera
+            m = m44.multiply(m44.create_from_translation(v3([0, 1.0, 0])), self.scene["race_monkey"].model)
+            self._eye = v3.from_matrix44_translation(m)
+            self._target = self._eye + + self._get_monkey_look_dir()  # Front facing camera
         self._update_view()
+
+    def _fog_params(self):
+        self.current_shader.set_bool("fogParams.on", self._fog_on)
+        if self._fog_on:
+            fog_start = math.sin(glfw.get_time() * 0.5) * 4 + 8
+            self.current_shader.set_v3("fogParams.color", v3(self._background_color))
+            self.current_shader.set_float("fogParams.start", fog_start)
+            self.current_shader.set_float("fogParams.end", fog_start + 10)
 
     def _draw_light_sources(self) -> None:
         """Draws light sources with appropriate shaders."""
         self._use_shader(self.shaders["light_source"])
+        self._fog_params()
         for light in self.point_lights:
             light.draw()
         self.spot_light.draw()
@@ -185,11 +227,7 @@ class Window:
         """Sets currently selected shader, then draws shaded objects."""
         self._use_shader(self.shaders[self.sel_shader_key])
         self.current_shader.set_v3("viewPos", self._eye)
-
-        fog_start = math.sin(glfw.get_time() * 0.5) * 6 + 6
-        self.current_shader.set_v3("fogParams.color", v3(self._background_color))
-        self.current_shader.set_float("fogParams.start", fog_start)
-        self.current_shader.set_float("fogParams.end", fog_start + 10)
+        self._fog_params()
 
         # Use lights
         self.sun_moon.use_light(self.current_shader)
@@ -198,7 +236,7 @@ class Window:
         self.spot_light.use_light(self.current_shader)
 
         # Draw objects
-        for o in self.scene:
+        for o in self.scene.values():
             o.draw(self.current_shader)
 
     def main_loop(self) -> None:

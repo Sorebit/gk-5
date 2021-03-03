@@ -56,6 +56,7 @@ struct FogParams
 	vec3 color;
 	float start;
 	float end;
+    bool on;
 };
 
 #define NR_POINT_LIGHTS 4
@@ -64,7 +65,7 @@ in vec3 v_normal;
 in vec3 frag_pos;
 in vec3 v_color;
 in vec2 v_texture;
-in vec4 ioEyeSpacePosition;
+in vec4 eyeSpacePosition;
 
 uniform vec3 viewPos;
 uniform Material material;
@@ -98,8 +99,11 @@ void main()
     result += CalcSpotLight(spotLight, norm, frag_pos, viewDir) * texel.rgb;
 
     // Apply fog
-    float fogCoordinate = abs(ioEyeSpacePosition.z / ioEyeSpacePosition.w);
-    result = mix(result, fogParams.color, getFogFactor(fogParams, fogCoordinate));
+    if (fogParams.on)
+    {
+        float fogCoordinate = abs(eyeSpacePosition.z / eyeSpacePosition.w);
+        result = mix(result, fogParams.color, getFogFactor(fogParams, fogCoordinate));
+    }
 
     FragColor = vec4(result, texel.a);
 }

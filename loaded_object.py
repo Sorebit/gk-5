@@ -8,7 +8,7 @@ from shader import Shader
 
 
 class LoadedObject:
-    def __init__(self, path: str, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+    def __init__(self, path: str, x: float = 0.0, y: float = 0.0, z: float = 0.0, scale: float = 1.0):
         """Object loaded from .obj and .mtl files, ready to be drawn."""
         self._path = path
         self._wavefront = None
@@ -21,8 +21,14 @@ class LoadedObject:
         # Set position and model
         self.pos = m44.create_from_translation(v3([x, y, z]))
         self.model = self.pos
+        self._scale = scale
+        self._scale_matrix: m44 = m44.create_from_scale(v3([self._scale] * 3))
         # Load wavefront
         self._load_obj()
+
+    def set_pos(self, pos: v3):
+        self.pos = m44.create_from_translation(pos)
+        self.model = self.pos
 
     def _load_obj(self) -> None:
         """Loads wavefront obj and materials. Stores vertex data into VAOs and VBOs."""
@@ -42,8 +48,7 @@ class LoadedObject:
 
         # For each material fill buffers and load a texture
         ind = 0
-        for key, material in self._wavefront.materials.items():
-            print(f'M: {key} : {material.vertex_format}, vs: {material.vertex_size}')
+        for material in self._wavefront.materials.values():
             vertex_size = material.vertex_size
             scene_vertices = np.array(material.vertices, dtype=np.float32)
             # Store length and materials for drawing
@@ -115,7 +120,7 @@ class LoadedObject:
             if model is not None:
                 shader.set_model(model)
             else:
-                shader.set_model(self.model)
+                shader.set_model(m44.multiply(self._scale_matrix, self.model))
             shader.set_v3("material.ambient", mat.ambient)
             shader.set_v3("material.diffuse", mat.diffuse)
             shader.set_v3("material.specular", mat.specular)
