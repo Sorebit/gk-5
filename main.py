@@ -29,8 +29,9 @@ class Window:
         glfw.make_context_current(self._window)
 
         # Set options
-        self._background_color = [0.7, 0.7, 0.6]
-        glClearColor(*self._background_color, 1)
+        self._background_color_night = v3([0.0, 0.05, 0.1])
+        self._background_color_day = v3([0.6, 0.7, 0.75])
+
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -58,6 +59,7 @@ class Window:
         self.sel_shader_key: str = "phong"  # Shaders dict key for selected shader
         self._use_shader(self.shaders[self.sel_shader_key])
         self._fog_on = False
+        self._fog_color = v3([0, 0, 0])
 
         # Scene
         self.scene = {
@@ -71,24 +73,23 @@ class Window:
         self._point_light_obj = LoadedObject("data/uv_sphere.obj")  # sphere to represent point light sources
         self._light_obj = LoadedObject("data/box/box-V3F.obj")  # Box to represent light sources
 
-        # TODO: animate direction and color for night/day cycle
-        self.sun_moon = DirLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.4, 0.4, 0.8]), spe=v3([0.5, 0.5, 0.8]),
+        self.sun_moon = DirLight(amb=v3([0.05, 0.05, 0.05]), dif=v3([0.4, 0.4, 0.8]), spe=v3([0.4, 0.4, 0.8]),
                                  direction=v3([-0.2, -1.0, -0.3]), uni_name="dirLight")
         point_lights = [
-            (v3([5.5, 0.2, -5.5]), v3([1.0, 0.3, 0.3])),  # red
+            (v3([5.5, 0.2, -5.5]), v3([1.0, 1.0, 1.0])),  # red
             (v3([-5.5, 0.2, 0.0]), v3([1.0, 1.0, 0.3])),  # yellow
             (v3([7.5, 2.2, 1.0]), v3([0.3, 0.3, 1.0])),  # blue
-            (v3([3.0, 0.2, 3.0]), v3([1.0, 1.0, 1.0]))  # purple
+            (v3([3.0, 0.2, 3.0]), v3([1.0, 0.3, 0.3]))  # white
         ]
         self.point_lights = list(self._pl_gen(point_lights))
 
         self.spot_light_offset = v3([0.0, -0.8, 0.75])  # Relative offset from monkey
         self.spot_light_def_dir = v3([0.0, -0.2, 0.0])  # Default direction (same as monkey)
-        self.spot_light_angle_offset = 0 * math.pi / 2  # TODO: Add changing with keyboard
+        self.spot_light_angle_offset = 0  # TODO: Add changing with keyboard
         self.spot_light = SpotLight(amb=v3([0.0, 0.0, 0.0]), dif=v3([0.0, 1.0, 0.5]), spe=v3([0.0, 1.0, 0.5]),
                                     k=v3([1.0, 0.07, 0.017]), pos=v3([0.0] * 3), direction=self.spot_light_def_dir,
                                     co=math.cos(math.radians(22.5)), oco=math.cos(math.radians(25.0)),
-                                    uni_name="spotLight", lss=self.shaders["light_source"], obj=self._light_obj)
+                                    uni_name="spotLight", lss=self.shaders["light_source"], obj=None)
 
     def _pl_gen(self, positions):
         """Point lights generator."""
@@ -150,6 +151,11 @@ class Window:
         self._update_projection()
 
     def _on_key_input(self, _window, key, _scancode, action, _mode) -> None:
+        left_right = {glfw.KEY_LEFT: 0.1, glfw.KEY_RIGHT: -0.1}
+        if key in left_right:
+            self.spot_light_angle_offset += left_right[key]
+            return
+
         if action != glfw.PRESS:
             return
         cam = {glfw.KEY_1: "static", glfw.KEY_2: "following", glfw.KEY_3: "moving"}
@@ -163,19 +169,27 @@ class Window:
         elif key == glfw.KEY_F:
             self._fog_on = not self._fog_on
 
+    def _set_daytime(self):
+        blend_factor = (math.sin(glfw.get_time() * 0.1) + 1) / 2
+        c = self._background_color_day * (1 - blend_factor) + self._background_color_night * blend_factor
+
+        self.sun_moon._diffuse = 0.9 * c
+        self.sun_moon._specular = 0.9 * c
+        self._fog_color = c
+        glClearColor(c.x, c.y, c.z, 1)
+
     def _move_objects(self) -> None:
         time = glfw.get_time()
+        # Move and rotate earth
         rot_y = m44.create_from_y_rotation(-0.5 * time)
-        trans_y = math.sin(time)
-        translation = m44.create_from_translation(v3([0, trans_y, 0]))
+        translation = m44.create_from_translation(v3([0, math.sin(time), 0]))
 
         model = m44.create_from_x_rotation(math.pi)  # upside down
         model = m44.multiply(translation, m44.multiply(model, self.scene["earth"].pos))  # up-down movement
         self.scene["earth"].model = m44.multiply(rot_y, model)  # rotation
 
         # Move and orientate race_monkey
-        radius = 5
-        translation = v3([math.sin(time) * radius, 1.2, math.cos(time) * radius])
+        translation = v3([math.sin(time) * 5, 1.2, math.cos(time) * 5])
         o = self.scene["race_monkey"]
         o.set_pos(translation)
         o.model = m44.multiply(m44.create_from_y_rotation(-time - math.pi / 2), o.model)
@@ -211,7 +225,7 @@ class Window:
         self.current_shader.set_bool("fogParams.on", self._fog_on)
         if self._fog_on:
             fog_start = math.sin(glfw.get_time() * 0.5) * 4 + 8
-            self.current_shader.set_v3("fogParams.color", v3(self._background_color))
+            self.current_shader.set_v3("fogParams.color", self._fog_color)
             self.current_shader.set_float("fogParams.start", fog_start)
             self.current_shader.set_float("fogParams.end", fog_start + 10)
 
@@ -245,6 +259,7 @@ class Window:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
             # Update scene
+            self._set_daytime()
             self._move_objects()
             self._process_camera()
 
