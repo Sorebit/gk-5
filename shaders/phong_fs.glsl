@@ -8,14 +8,6 @@ struct Material {
     float shininess;
 };
 
-struct Light {
-    vec3 position;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
-
 struct DirLight {
     vec3 direction;
 
@@ -69,7 +61,6 @@ in vec4 eyeSpacePosition;
 
 uniform vec3 viewPos;
 uniform Material material;
-uniform Light light;
 uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLight;
