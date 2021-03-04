@@ -29,12 +29,12 @@ class Window:
         glfw.make_context_current(self._window)
 
         # Set options
-        self._background_color_night = v3([0.0, 0.05, 0.1])
-        self._background_color_day = v3([0.6, 0.7, 0.75])
-
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        self._background_color_night = v3([0.0, 0.05, 0.1])
+        self._background_color_day = v3([0.6, 0.7, 0.75])
 
         # Camera
         self.sel_camera: str = "static"  # Selected camera name
@@ -49,7 +49,6 @@ class Window:
         self._prepare_matrices()
 
         # Shaders
-        # TODO: Update Gouraud
         self.shaders = {
             "phong": Shader("shaders/phong_vs.glsl", "shaders/phong_fs.glsl"),
             "gouraud": Shader("shaders/gouraud_vs.glsl", "shaders/gouraud_fs.glsl"),
@@ -63,7 +62,10 @@ class Window:
 
         # Scene
         self.scene = {
-            "floor": LoadedObject("data/floor.obj"),
+            "floor_1": LoadedObject("data/floor.obj", -5, 0, -5),
+            "floor_2": LoadedObject("data/floor.obj", -5, 0, 5),
+            "floor_3": LoadedObject("data/floor.obj", 5, 0, -5),
+            "floor_4": LoadedObject("data/floor.obj", 5, 0, 5),
             "earth": LoadedObject("data/uv_sphere.obj", 0, 1.4 * 1.5, 0, scale=1.4),
             "race_monkey": LoadedObject("data/monkey.obj", -3, 1.2, 0, ),
         }
@@ -100,7 +102,8 @@ class Window:
                                obj=self._point_light_obj)
             yield light
 
-    def _box_gen(self, num, mx):
+    @staticmethod
+    def _box_gen(num, mx):
         box_path = "data/box/box-T2F_N3F_V3F.obj"
         p = lambda n: (mx * 2) / num * (n % num) - mx + 1
 
@@ -152,7 +155,7 @@ class Window:
 
     def _on_key_input(self, _window, key, _scancode, action, _mode) -> None:
         left_right = {glfw.KEY_LEFT: 0.1, glfw.KEY_RIGHT: -0.1}
-        if key in left_right:
+        if key in left_right and action != glfw.RELEASE:
             self.spot_light_angle_offset += left_right[key]
             return
 
