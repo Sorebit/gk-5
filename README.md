@@ -1,4 +1,6 @@
-# Grafika 3D
+# 3D graphics course final project
+
+![preview](preview.png)
 
 ## Installation
 
@@ -9,25 +11,25 @@
 
 - `python main.py`
 
-## Przyjęte rozwiązania techniczne:
+## Used libraries:
 
-- `glfw` - Tworzenie okna
-- `pyopengl` - Bindy do renderowania w OpenGL
-- `pyrr` + `numpy` - Operacja na wektorach i macierzach
-- `pillow` - Wczytywanie obrazów
-- `pywavefront` - Wczytywanie plików `*.obj` i `*.mtl`
+- `glfw` - Window creation
+- `pyopengl` - OpenGL bindings
+- `pyrr` + `numpy` - Vector and matrix operations
+- `pillow` - Image loading
+- `pywavefront` - Handling of `*.obj` and `*.mtl` files
 
-## Klawiszologia
+## Keyboard shortcuts
 
-### Kamera
+### Camera
 
-- `1` - Kamera statyczna
-- `2` - Kamera podążająca za obiektem
-- `3` - Kamera "przyczepiona" do obiektu
+- `1` - Static camera
+- `2` - Follow the monkey
+- `3` - *Be* the monkey
   
-### Cieniowanie
+### Shading options
 
-- `O` - Gouraud
-- `P` - Phong
-- `F` - Mgła
-- `<- / ->` - Zmiana kierunku reflektora
+- `O` - Gouraud shading
+- `P` - Phong shading
+- `F` - Toggle fog
+- `<- / ->` - Change spotlight direction
